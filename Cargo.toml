@@ -1,0 +1,12 @@
+[package]
+name = "tty_sender"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+winapi = { version = "0.3", features = ["winuser", "wingdi", "winbase", "wincon", "handleapi", "libloaderapi", "combaseapi", "objbase", "shellapi", "shobjidl"] }
+lazy_static = "1.4.0"
+wio = "0.2.0"
+
+[package.metadata.windows_subsystem]
+windows = true
