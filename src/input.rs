@@ -198,9 +198,9 @@ unsafe fn send_one_line(data: &mut WindowData) -> bool {
 
     let line = String::from_utf16_lossy(&line_info.psz_text[..copied as usize]);
     for c in line.chars() {
-        send_key(c);
+        send_key(data, c);
     }
-    send_enter();
+    send_enter(data);
 
     let next_line_pos = if next_line_start == -1 {
         let text_len = GetWindowTextLengthW(data.edit_handle) as i32;
@@ -226,107 +226,28 @@ unsafe fn send_one_line(data: &mut WindowData) -> bool {
     return true;
 }
 
-unsafe fn send_space() {
-    let mut inputs = [
-        INPUT {
-            type_: INPUT_KEYBOARD,
-            u: std::mem::zeroed(),
-        },
-        INPUT {
-            type_: INPUT_KEYBOARD,
-            u: std::mem::zeroed(),
-        },
-    ];
-
-    inputs[0].u.ki_mut().wVk = VK_SPACE as u16;
-    inputs[0].u.ki_mut().dwFlags = 0;
-
-    inputs[1].u.ki_mut().wVk = VK_SPACE as u16;
-    inputs[1].u.ki_mut().dwFlags = KEYEVENTF_KEYUP;
-
-    SendInput(2, inputs.as_mut_ptr(), std::mem::size_of::<INPUT>() as _);
+unsafe fn send_enter(data: &WindowData) {
+    PostMessageW(
+        data.target_hwnd,
+        WM_CHAR,
+        VK_RETURN as u32 as WPARAM,
+        0
+    );
 }
 
-unsafe fn send_normal_key(c: char) {
-    let mut inputs = [
-        INPUT {
-            type_: INPUT_KEYBOARD,
-            u: std::mem::zeroed(),
-        },
-        INPUT {
-            type_: INPUT_KEYBOARD,
-            u: std::mem::zeroed(),
-        },
-    ];
-
-    // 处理大写字母
-    if c.is_uppercase() {
-        // 先发送Shift键按下
-        let mut shift_input = INPUT {
-            type_: INPUT_KEYBOARD,
-            u: std::mem::zeroed(),
-        };
-        shift_input.u.ki_mut().wVk = VK_SHIFT as u16;
-        shift_input.u.ki_mut().dwFlags = 0;
-        SendInput(1, &mut shift_input as *mut _, std::mem::size_of::<INPUT>() as _);
-    }
-
-    // 使用UNICODE方式发送字符
-    inputs[0].u.ki_mut().wScan = c as u16;
-    inputs[0].u.ki_mut().dwFlags = KEYEVENTF_UNICODE;
-
-    inputs[1].u.ki_mut().wScan = c as u16;
-    inputs[1].u.ki_mut().dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
-
-    SendInput(2, inputs.as_mut_ptr(), std::mem::size_of::<INPUT>() as _);
-
-    // 如果是大写字母，发送Shift键释放
-    if c.is_uppercase() {
-        let mut shift_input = INPUT {
-            type_: INPUT_KEYBOARD,
-            u: std::mem::zeroed(),
-        };
-        shift_input.u.ki_mut().wVk = VK_SHIFT as u16;
-        shift_input.u.ki_mut().dwFlags = KEYEVENTF_KEYUP;
-        SendInput(1, &mut shift_input as *mut _, std::mem::size_of::<INPUT>() as _);
-    }
-}
-
-fn send_key(c: char) {
+fn send_key(data: &WindowData, c: char) {
     unsafe {
-        if c == ' ' {
-            // 空格仍然使用原来的方式
-            send_space();
-        } else {
-            send_normal_key(c);
-        }
+        PostMessageW(
+            data.target_hwnd,
+            WM_CHAR,
+            c as u32 as WPARAM,
+            0
+        );
     }
-    // 适当增加延迟
+
     std::thread::sleep(std::time::Duration::from_millis(50));
 }
 
-unsafe fn send_enter() {
-    let mut inputs = [
-        INPUT {
-            type_: INPUT_KEYBOARD,
-            u: std::mem::zeroed(),
-        },
-        INPUT {
-            type_: INPUT_KEYBOARD,
-            u: std::mem::zeroed(),
-        },
-    ];
-
-    // 仍然使用虚拟键码方式发送回车
-    inputs[0].u.ki_mut().wVk = VK_RETURN as u16;
-    inputs[0].u.ki_mut().dwFlags = 0;
-
-    inputs[1].u.ki_mut().wVk = VK_RETURN as u16;
-    inputs[1].u.ki_mut().dwFlags = KEYEVENTF_KEYUP;
-
-    SendInput(2, inputs.as_mut_ptr(), std::mem::size_of::<INPUT>() as _);
-    std::thread::sleep(std::time::Duration::from_millis(50));
-}
 
 #[repr(C)]struct LINEW {
     psz_text: [u16; 1024],
