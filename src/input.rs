@@ -259,6 +259,18 @@ unsafe fn send_normal_key(c: char) {
         },
     ];
 
+    // 处理大写字母
+    if c.is_uppercase() {
+        // 先发送Shift键按下
+        let mut shift_input = INPUT {
+            type_: INPUT_KEYBOARD,
+            u: std::mem::zeroed(),
+        };
+        shift_input.u.ki_mut().wVk = VK_SHIFT as u16;
+        shift_input.u.ki_mut().dwFlags = 0;
+        SendInput(1, &mut shift_input as *mut _, std::mem::size_of::<INPUT>() as _);
+    }
+
     // 使用UNICODE方式发送字符
     inputs[0].u.ki_mut().wScan = c as u16;
     inputs[0].u.ki_mut().dwFlags = KEYEVENTF_UNICODE;
@@ -267,6 +279,17 @@ unsafe fn send_normal_key(c: char) {
     inputs[1].u.ki_mut().dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
 
     SendInput(2, inputs.as_mut_ptr(), std::mem::size_of::<INPUT>() as _);
+
+    // 如果是大写字母，发送Shift键释放
+    if c.is_uppercase() {
+        let mut shift_input = INPUT {
+            type_: INPUT_KEYBOARD,
+            u: std::mem::zeroed(),
+        };
+        shift_input.u.ki_mut().wVk = VK_SHIFT as u16;
+        shift_input.u.ki_mut().dwFlags = KEYEVENTF_KEYUP;
+        SendInput(1, &mut shift_input as *mut _, std::mem::size_of::<INPUT>() as _);
+    }
 }
 
 fn send_key(c: char) {
